@@ -65,7 +65,7 @@ const dragDrop = (ipfs) => {
   }
 }
 
-module.exports.statusMessages = (stream) => {
+const statusMessages = (stream) => {
   let time = 0
   const timeouts = [
     'Stream: Still loading data from IPFS...',
@@ -134,6 +134,9 @@ const createVideoElement = () => {
   return videoElement
 }
 
-module.exports.log = log
-module.exports.dragDrop = dragDrop
-module.exports.createVideoElement = createVideoElement
+export {
+  log,
+  dragDrop,
+  createVideoElement,
+  statusMessages
+}

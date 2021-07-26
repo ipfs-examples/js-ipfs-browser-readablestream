@@ -1,32 +1,40 @@
-'use strict'
-
-/* eslint-env browser */
-
-const Ipfs = require('ipfs')
-const VideoStream = require('videostream')
-const toStream = require('it-to-stream')
-const {
+import Ipfs from 'ipfs'
+import VideoStream from 'videostream'
+import toStream from 'it-to-stream'
+import {
   dragDrop,
   statusMessages,
   createVideoElement,
   log
-} = require('./utils')
+} from './utils'
 
-document.addEventListener('DOMContentLoaded', async () => {
+const App = async () => {
+  // DOM
+  const DOM = {
+    cidInput: () => document.getElementById('cid'),
+    goButton: () => document.getElementById('gobutton'),
+    file: () => document.getElementById('file')
+  }
+
+  log('IPFS: Initializing')
+  const videoElement = createVideoElement()
   const ipfs = await Ipfs.create({ repo: 'ipfs-' + Math.random() })
 
-  log('IPFS: Initialising')
+  // Allow adding files to IPFS via drag and drop
+  dragDrop(ipfs, log)
 
-  // Set up event listeners on the <video> element from index.html
-  const videoElement = createVideoElement()
-  const cidInput = document.getElementById('cid')
-  const goButton = document.getElementById('gobutton')
+  log('IPFS: Ready')
+  log('IPFS: Drop an .mp4 file into this window to add a file')
+  log('IPFS: Then press the "Go!" button to start playing a video')
+
+  DOM.cidInput().disabled = false
+  DOM.goButton().disabled = false
   let stream
 
-  goButton.onclick = function (event) {
+  DOM.goButton().addEventListener('click', (event) => {
     event.preventDefault()
 
-    log(`IPFS: Playing ${cidInput.value.trim()}`)
+    log(`IPFS: Playing ${DOM.cidInput().value.trim()}`)
 
     // Set up the video stream an attach it to our <video> element
     const videoStream = new VideoStream({
@@ -47,7 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // This stream will contain the requested bytes
-        stream = toStream.readable(ipfs.cat(cidInput.value.trim(), {
+        stream = toStream.readable(ipfs.cat(DOM.cidInput().value.trim(), {
           offset: start,
           length: end && end - start
         }))
@@ -65,15 +73,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, videoElement)
 
     videoElement.addEventListener('error', () => log(videoStream.detailedError))
-  }
+  })
+}
 
-  // Allow adding files to IPFS via drag and drop
-  dragDrop(ipfs, log)
 
-  log('IPFS: Ready')
-  log('IPFS: Drop an .mp4 file into this window to add a file')
-  log('IPFS: Then press the "Go!" button to start playing a video')
-
-  cidInput.disabled = false
-  goButton.disabled = false
-})
+document.addEventListener('DOMContentLoaded', async () => App())

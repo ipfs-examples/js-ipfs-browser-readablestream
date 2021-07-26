@@ -1,17 +1,29 @@
 'use strict'
 
-const pkg = require('./package.json')
+const { test, expect } = require('@playwright/test');
+const { playwright } = require('test-util-ipfs-example');
 
-module.exports = {
-  [pkg.name]: function (browser) {
-    browser
-      .url(process.env.IPFS_EXAMPLE_TEST_URL)
-      .waitForElementVisible('#output')
+// Setup
+const play = test.extend({
+  ...playwright.servers(),
+});
 
-    browser.expect.element('#output').text.to.contain('IPFS: Then press the "Go!" button to start playing a video')
+play.describe('video readable stream:', () => {
+  // DOM
+  const output = "#output"
+  const container = "#container"
 
-    browser.executeAsync(async function (done) {
-      const container = document.querySelector('#container')
+  play.beforeEach(async ({servers, page}) => {
+    await page.goto(`http://localhost:${servers[0].port}/`);
+  })
+
+  play('should properly initialized a IPFS node and play an uploaded .mp4', async ({ page }) => {
+    await page.textContent('#output:has-text("IPFS: Ready")')
+
+    await page.waitForSelector(container)
+
+    await page.evaluateHandle((el) => {
+      const container = document.querySelector(el)
 
       // fake dropping a file
       container.ondrop({
@@ -759,30 +771,14 @@ module.exports = {
           }]
         }
       })
+    }, container)
 
-      done()
-    })
+    const cidValue = "QmPp6XSq2XyLAmZgMvbwhRuwsVdM6mLYpoLzdydyBkakHR"
+    await page.textContent(container, `#output:has-text(${cidValue})`)
 
-    browser.expect.element('#output').text.to.contain('IPFS: Added ')
+    expect(await page.$eval("#cid", el => el.value)).toBe(cidValue)
+    await page.click("#gobutton")
 
-    browser.click('#gobutton')
-      .executeAsync(function (done) {
-        const video = document.getElementById('video')
-        video.addEventListener('canplay', function () {
-          done()
-        })
-
-        setTimeout(() => {
-          done('Did not start streaming video after 1m')
-        }, 60000)
-      }, [], (result) => {
-        if (result.value) {
-          throw new Error(result.value)
-        }
-      })
-
-    browser.end()
-  }
-}
-
-
+    await page.textContent(container, `#output:has-text(Video: canplay)`)
+  });
+});
